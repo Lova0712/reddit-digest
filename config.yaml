@@ -1,0 +1,90 @@
+# Reddit 다이제스트 설정 파일
+# 숫자나 목록을 바꾸면 코드 수정 없이 동작을 조정할 수 있습니다.
+
+# ───────────── 1. 수집 ─────────────
+reddit:
+  subreddits:
+    - gamedev
+    - indiedev
+    - Unity3D
+  top_time_filter: week      # top 글 기간: hour, day, week, month, year, all
+  max_posts_per_subreddit: 25  # 서브레딧마다 top/hot 각각 가져올 최대 개수
+  comments_per_post: 10      # 글마다 읽어올 상위 댓글 수
+  request_delay_seconds: 2   # 요청 사이 대기 시간 (Reddit 요청 제한 준수)
+  max_retries: 3             # 에러 시 재시도 횟수 (지수 백오프)
+
+# ───────────── 2. 선별 ─────────────
+filter:
+  # 규칙 필터 (Claude 평가 전에 먼저 걸러서 비용 절약)
+  min_score: 20              # 최소 upvote
+  min_comments: 5            # 최소 댓글 수
+  min_body_length: 300       # 본문 최소 글자 수 (이보다 짧으면 제외)
+
+  # 제목에 이 문구가 있으면 제외 (대소문자 무시)
+  # 주의: "wishlist" 한 단어만 넣으면 "위시리스트 7천 개 모은 방법" 같은 좋은 마케팅 글도 빠지므로
+  #       홍보 문구 형태로 적습니다.
+  exclude_keywords:
+    - meme
+    - shitpost
+    - "please wishlist"
+    - "wishlist now"
+    - "wishlist my"
+    - "check out my"
+    - "my new game"
+    - "our new game"
+    - "steam page is live"
+
+  # 이 플레어(분류 태그)는 제외
+  exclude_flairs:
+    - Meme
+    - Humor
+    - Video
+    - Show Off
+    - Promotion
+
+  # 이 단어가 있으면 우선순위를 높임 (Claude 평가 시 참고)
+  priority_keywords:
+    - tutorial
+    - postmortem
+    - post-mortem
+    - lessons learned
+    - marketing
+    - launch
+    - sales
+    - wishlists
+    - tips
+    - how i
+    - performance
+    - optimization
+
+  # Claude 유용도 평가 (1~10점) 기준
+  min_usefulness_score: 7
+  max_candidates_to_rate: 30  # 규칙 통과 글 중 Claude로 평가할 최대 개수 (구독 한도 절약)
+
+# ───────────── 3. 번역·요약 ─────────────
+# claude CLI(구독)로 호출합니다. 모델은 CLI 별칭으로 적습니다.
+translate:
+  claude_command: claude     # claude CLI 실행 파일 이름(또는 전체 경로)
+  model: sonnet              # 번역·요약에 쓸 모델
+  rating_model: haiku        # 유용도 평가용 (가볍고 한도를 덜 씀)
+  timeout_seconds: 300       # 글 하나 처리 최대 대기 시간
+  max_posts_per_day: 10      # 하루 최대 번역 글 수 (구독 사용 한도 절약)
+  max_body_chars: 8000       # 이보다 긴 본문은 앞부분만 보내고 요약 번역
+
+# ───────────── 4. 출력·발송 ─────────────
+output:
+  pdf_dir: output
+  font_path: fonts/NotoSansKR-Regular.ttf
+  font_bold_path: fonts/NotoSansKR-Bold.ttf
+
+mail:
+  method: gmail_api          # gmail_api 또는 smtp
+  subject_prefix: "[Reddit 게임개발 다이제스트]"
+
+notion:
+  enabled: true
+
+# ───────────── 5. 기록 ─────────────
+storage:
+  db_path: reddit_digest.db
+  log_path: output/digest.log
