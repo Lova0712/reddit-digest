@@ -68,6 +68,7 @@ reddit-digest/
 - `python main.py` : 전체 실행
 - `python main.py --dry-run` : 수집·선별·번역만 하고 메일/Notion 발송 안 함 (결과는 output/에 저장)
 - `python main.py --limit 3` : 테스트용 개수 제한
+- `python setup_notion.py <페이지 링크>` : Notion 데이터베이스를 처음 한 번 만들고 `.env`에 ID 저장 (완료됨)
 - `python main.py --sample` : Reddit 대신 samples/ 예시 글 사용 (`.env`에 Reddit 키가 없으면 자동 적용)
 - Reddit API는 Responsible Builder Policy에 따라 사전 승인이 필요함 (2026-09-29 신청). 승인 전까지는 예시 글로 개발.
 - 자동 실행: 매일 아침 1회. Windows면 작업 스케줄러, Mac/Linux면 cron 설정 방법을 README에 정리.
