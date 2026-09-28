@@ -13,7 +13,7 @@ r/gamedev, r/indiedev, r/Unity3D에서 유용한 글을 골라 한국어로 번�
   - 호출 시 환경 변수에서 `ANTHROPIC_API_KEY`를 반드시 제거한다 (있으면 CLI가 API 과금으로 전환됨).
   - 모델은 CLI 별칭(`sonnet`, `haiku`)으로 지정, 결과는 `--output-format json`으로 받아 파싱.
 - PDF: `reportlab` + 한글 폰트(Noto Sans KR, `fonts/` 폴더에 ttf 포함). 한글 깨짐 반드시 확인.
-- Gmail: Gmail API (OAuth, `google-api-python-client`) — 대안으로 SMTP + 앱 비밀번호 지원
+- Gmail: SMTP(`smtplib`, smtp.gmail.com:465) + 앱 비밀번호. Gmail API(OAuth)는 개인용 테스트 앱의 토큰이 7일마다 만료돼 매일 자동 발송에 부적합하여 쓰지 않음.
 - Notion: `notion-client` (Notion 공식 API, 통합(Integration) 토큰)
 - 중복 방지: `sqlite3` (표준 라이브러리)
 - 설정: `.env` + `python-dotenv`, 필터 규칙은 `config.yaml`
@@ -79,10 +79,12 @@ REDDIT_CLIENT_ID=
 REDDIT_CLIENT_SECRET=
 REDDIT_USER_AGENT=reddit-digest/0.1 by <reddit 아이디>
 GMAIL_TO=
+GMAIL_USER=
+GMAIL_APP_PASSWORD=
 NOTION_TOKEN=
 NOTION_DATABASE_ID=
 ```
-Gmail OAuth용 `credentials.json`, `token.json`은 루트에 두되 git에 올리지 않는다.
+`.env`는 git에 올리지 않는다. 키를 `.env.example`에 넣지 않도록 주의 (그 파일은 git에 올라감).
 
 ## 규칙
 - API 키·토큰은 절대 코드에 하드코딩하지 않는다. `.env`, `credentials.json`, `token.json`, `output/`, `*.db`는 `.gitignore`에 추가.

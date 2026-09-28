@@ -78,7 +78,7 @@ output:
   font_bold_path: fonts/NotoSansKR-Bold.ttf
 
 mail:
-  method: gmail_api          # gmail_api 또는 smtp
+  # Gmail SMTP + 앱 비밀번호로 보냅니다 (.env 의 GMAIL_USER / GMAIL_APP_PASSWORD / GMAIL_TO)
   subject_prefix: "[Reddit 게임개발 다이제스트]"
 
 notion:

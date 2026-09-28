@@ -2,9 +2,10 @@
 SQLite 로 글의 처리 상태를 기록해서 같은 글을 두 번 처리하지 않게 하는 모듈.
 
 status 값의 의미
-- translated : 번역까지 끝났지만 Notion/메일 발송이 아직 안 된 글
+- translated : 번역까지 끝났지만 메일·Notion 발송이 아직 안 된 글
                → 다음 실행 때 번역 결과(data)를 그대로 다시 써서 발송만 재시도 (번역 한도 절약)
-- done       : 발송까지 끝난 글 → 다시 처리하지 않음
+- mailed     : 메일은 보냈지만 Notion 업로드가 실패한 글 → 다음에 Notion 만 재시도
+- done       : 메일·Notion 모두 끝난 글 → 다시 처리하지 않음
 - rejected   : Claude 유용도 평가에서 떨어진 글 → 다시 평가하지 않음
 점수·댓글 수 같은 규칙 필터에서 떨어진 글은 기록하지 않습니다.
 (시간이 지나 추천 수가 오르면 다음 실행 때 통과할 수 있으므로)
@@ -64,11 +65,20 @@ class Store:
         self.mark(result["id"], "translated", result.get("usefulness"), result["original_title"], data=result)
 
     def pending_translations(self):
-        """번역은 됐지만 아직 발송이 끝나지 않은 글들의 번역 결과 목록."""
+        """
+        번역은 됐지만 발송이 다 끝나지 않은 글들의 번역 결과 목록.
+        각 결과에 "mailed" (메일을 이미 보냈는지) 값을 붙여서 돌려준다.
+        """
         rows = self.conn.execute(
-            "SELECT data FROM posts WHERE status = 'translated' AND data IS NOT NULL ORDER BY updated_at"
+            "SELECT data, status FROM posts WHERE status IN ('translated', 'mailed') AND data IS NOT NULL "
+            "ORDER BY updated_at"
         ).fetchall()
-        return [json.loads(row[0]) for row in rows]
+        results = []
+        for data, status in rows:
+            r = json.loads(data)
+            r["mailed"] = status == "mailed"
+            results.append(r)
+        return results
 
     def close(self):
         self.conn.close()

@@ -21,7 +21,7 @@ from pathlib import Path
 import yaml
 from dotenv import load_dotenv
 
-from src import fetch, filter as post_filter, notion_upload, pdf_maker, translate
+from src import fetch, filter as post_filter, mailer, notion_upload, pdf_maker, translate
 from src.store import Store
 
 ROOT = Path(__file__).parent
@@ -152,6 +152,22 @@ def save_results(results, out_dir, today):
     return json_path, md_path
 
 
+def send_mail(cfg, results, pdf_path, today):
+    """6. PDF 를 첨부해 Gmail 로 보낸다. 성공하면 True."""
+    user, password, to = os.getenv("GMAIL_USER"), os.getenv("GMAIL_APP_PASSWORD"), os.getenv("GMAIL_TO")
+    if not (user and password and to):
+        log.error(".env 에 GMAIL_USER / GMAIL_APP_PASSWORD / GMAIL_TO 가 없어 메일을 건너뜁니다.")
+        return False
+    try:
+        msg = mailer.build_message(results, pdf_path, today, user, to, cfg["mail"]["subject_prefix"])
+        mailer.send(msg, user, password)
+        log.info("메일 발송 완료 → %s", to)
+        return True
+    except Exception as e:
+        log.error("메일 발송 실패: %s", e)
+        return False
+
+
 def upload_to_notion(cfg, results, today):
     """7. Notion 업로드. 성공한(또는 이미 있던) 글 id 집합을 돌려준다."""
     if not cfg["notion"]["enabled"]:
@@ -206,15 +222,17 @@ def main():
             log.info("지난번 발송 실패한 글 %d개를 다시 보냅니다.", len(pending))
 
         results = pending + select_and_translate(cfg, args, store, use_sample, record)
+        # 메일로 보낼 글 = 아직 메일을 안 보낸 글 (Notion 만 실패했던 글은 메일 중복 방지)
+        to_mail = [r for r in results if not r.get("mailed")]
 
         today = date.today().isoformat()
         out_dir = ROOT / cfg["output"]["pdf_dir"]
-        json_path, md_path = save_results(results, out_dir, today)
+        json_path, md_path = save_results(to_mail, out_dir, today)
         log.info("저장 완료: %s, %s", json_path.name, md_path.name)
 
         # 5. PDF 만들기
         ocfg = cfg["output"]
-        pdf_path = pdf_maker.make_pdf(results, out_dir, today, ROOT / ocfg["font_path"], ROOT / ocfg["font_bold_path"])
+        pdf_path = pdf_maker.make_pdf(to_mail, out_dir, today, ROOT / ocfg["font_path"], ROOT / ocfg["font_bold_path"])
         log.info("PDF 생성: %s", pdf_path.name)
 
         if args.dry_run:
@@ -224,19 +242,24 @@ def main():
             log.info("보낼 글이 없습니다.")
             return 0
 
-        # 6. Gmail 발송 - 5단계에서 추가 예정
-        log.warning("Gmail 발송은 아직 준비 중입니다 (5단계).")
+        # 6. Gmail 발송
+        mail_ok = send_mail(cfg, to_mail, pdf_path, today) if to_mail else False
 
-        # 7. Notion 업로드
+        # 7. Notion 업로드 (이미 올라간 글은 원문 링크로 확인해서 건너뜀)
         notion_ok = upload_to_notion(cfg, results, today)
 
-        # 8. 기록: 발송이 끝난 글만 done. 실패한 글은 translated 로 남아 다음에 재시도
-        if record:
-            for r in results:
-                if r["id"] in notion_ok:
-                    store.mark(r["id"], "done")
-        failed = len(results) - len(notion_ok)
-        log.info("완료: 성공 %d개, 실패 %d개", len(notion_ok), failed)
+        # 8. 기록: 메일·Notion 둘 다 끝난 글만 done. 나머지는 다음 실행 때 재시도
+        done = 0
+        for r in results:
+            mailed = r.get("mailed") or mail_ok
+            if mailed and r["id"] in notion_ok:
+                status = "done"
+                done += 1
+            else:
+                status = "mailed" if mailed else "translated"
+            if record:
+                store.mark(r["id"], status)
+        log.info("완료: %d개 중 %d개 발송 완료, %d개는 다음 실행 때 재시도", len(results), done, len(results) - done)
     finally:
         store.close()
     return 0
