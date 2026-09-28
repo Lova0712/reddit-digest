@@ -40,14 +40,15 @@ def parse_args():
 def setup_logging(log_path):
     """화면과 로그 파일에 같이 기록한다."""
     log_path.parent.mkdir(parents=True, exist_ok=True)
+    handlers = [logging.FileHandler(log_path, encoding="utf-8")]
+    # 작업 스케줄러에서 창 없이(pythonw) 실행하면 화면 출력이 없으므로 파일에만 기록
+    if sys.stdout:
+        handlers.append(logging.StreamHandler(sys.stdout))
     logging.basicConfig(
         level=logging.INFO,
         format="%(asctime)s [%(levelname)s] %(message)s",
-        datefmt="%H:%M:%S",
-        handlers=[
-            logging.StreamHandler(sys.stdout),
-            logging.FileHandler(log_path, encoding="utf-8"),
-        ],
+        datefmt="%Y-%m-%d %H:%M:%S",
+        handlers=handlers,
     )
     # Notion 라이브러리가 요청마다 남기는 기록은 숨김 (경고 이상만 표시)
     logging.getLogger("httpx").setLevel(logging.WARNING)
@@ -200,7 +201,8 @@ def upload_to_notion(cfg, results, today):
 
 def main():
     # 윈도우 콘솔에서도 한글이 깨지지 않게 UTF-8 로 출력
-    sys.stdout.reconfigure(encoding="utf-8")
+    if sys.stdout:
+        sys.stdout.reconfigure(encoding="utf-8")
     args = parse_args()
     load_dotenv(ROOT / ".env")
     cfg = yaml.safe_load((ROOT / "config.yaml").read_text(encoding="utf-8"))
@@ -208,6 +210,11 @@ def main():
 
     use_sample = args.sample or not fetch.has_reddit_keys()
     if not args.sample and use_sample:
+        if not args.dry_run:
+            # Reddit 승인 전에 자동 실행되면 매일 같은 예시 글이 발송되므로 막아 둔다.
+            # (테스트로 보내 보려면 --sample 을 붙여서 실행)
+            log.warning(".env 에 Reddit 키가 없어서 발송하지 않고 종료합니다. (Reddit API 승인 대기 중)")
+            return 0
         log.warning(".env 에 Reddit 키가 없어서 예시 글을 사용합니다.")
 
     # DB 에 기록하는 경우: 실제 실행 + 실제 Reddit 글일 때만

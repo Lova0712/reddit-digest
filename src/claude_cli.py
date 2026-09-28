@@ -58,6 +58,8 @@ def ask_json(prompt, schema, system_prompt, model="sonnet", timeout=300, command
             env=_clean_env(),
             timeout=timeout,
             cwd=tempfile.gettempdir(),     # 프로젝트 폴더 밖에서 실행
+            # 윈도우 작업 스케줄러로 실행할 때 호출마다 검은 창이 깜빡이지 않게 함
+            creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
         )
     except FileNotFoundError:
         raise ClaudeError(f"'{command}' 명령을 찾을 수 없습니다. Claude Code가 설치되어 있는지 확인하세요.")
