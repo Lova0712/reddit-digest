@@ -1,7 +1,7 @@
 ﻿# Windows 작업 스케줄러에 "매일 자동 실행"을 등록하는 스크립트
 #
 # 사용법 (PowerShell 에서 프로젝트 폴더로 이동 후):
-#   powershell -ExecutionPolicy Bypass -File setup_schedule.ps1            # 매일 18:00
+#   powershell -ExecutionPolicy Bypass -File setup_schedule.ps1            # 매일 20:30
 #   powershell -ExecutionPolicy Bypass -File setup_schedule.ps1 -Time 07:30 # 시간 바꾸기
 #   powershell -ExecutionPolicy Bypass -File setup_schedule.ps1 -Remove     # 등록 해제
 #
@@ -12,7 +12,7 @@
 # - 창 없이(pythonw) 실행, 기록은 output\digest.log 에 남음
 
 param(
-    [string]$Time = "18:00",
+    [string]$Time = "20:30",
     [switch]$Remove
 )
 

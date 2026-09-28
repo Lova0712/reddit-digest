@@ -89,7 +89,7 @@ Reddit 키가 없을 때 `--sample` 없이 실제 실행하면 **발송하지 �
 
 ### Windows (작업 스케줄러)
 ```powershell
-powershell -ExecutionPolicy Bypass -File setup_schedule.ps1              # 매일 18:00
+powershell -ExecutionPolicy Bypass -File setup_schedule.ps1              # 매일 20:30
 powershell -ExecutionPolicy Bypass -File setup_schedule.ps1 -Time 07:30  # 시간 바꾸기
 powershell -ExecutionPolicy Bypass -File setup_schedule.ps1 -Remove      # 해제
 Start-ScheduledTask -TaskName RedditDigest                               # 지금 한 번 실행
@@ -100,9 +100,9 @@ Start-ScheduledTask -TaskName RedditDigest                               # 지�
 - 프로젝트 폴더를 옮기면 스크립트를 다시 실행해서 등록을 갱신하세요.
 
 ### Mac / Linux (cron)
-`crontab -e` 를 열고 아래 한 줄을 추가합니다 (매일 18:00, 경로는 본인 것으로).
+`crontab -e` 를 열고 아래 한 줄을 추가합니다 (매일 20:30, 경로는 본인 것으로).
 ```cron
-0 18 * * * cd /path/to/reddit-digest && .venv/bin/python main.py >> output/cron.log 2>&1
+30 20 * * * cd /path/to/reddit-digest && .venv/bin/python main.py >> output/cron.log 2>&1
 ```
 cron 은 PATH 가 짧아서 `claude` 를 못 찾을 수 있습니다. 그럴 때는 `which claude` 로 나온
 전체 경로를 `config.yaml` 의 `translate.claude_command` 에 적어 주세요.

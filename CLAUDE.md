@@ -71,7 +71,7 @@ reddit-digest/
 - `python setup_notion.py <페이지 링크>` : Notion 데이터베이스를 처음 한 번 만들고 `.env`에 ID 저장 (완료됨)
 - `python main.py --sample` : Reddit 대신 samples/ 예시 글 사용 (`.env`에 Reddit 키가 없으면 자동 적용)
 - Reddit API는 Responsible Builder Policy에 따라 사전 승인이 필요함 (2026-09-29 신청). 승인 전까지는 예시 글로 개발.
-- 자동 실행: 매일 18:00 1회. Windows 작업 스케줄러에 `setup_schedule.ps1`로 등록됨 (작업 이름 `RedditDigest`, 로그인 시에만, 놓치면 다음 부팅 때 실행, pythonw로 창 없이). Mac/Linux cron 방법은 README에 정리.
+- 자동 실행: 매일 20:30 1회. Windows 작업 스케줄러에 `setup_schedule.ps1`로 등록됨 (작업 이름 `RedditDigest`, 로그인 시에만, 놓치면 다음 부팅 때 실행, pythonw로 창 없이). Mac/Linux cron 방법은 README에 정리.
 - `.env`에 Reddit 키가 없으면 실제 실행(`--dry-run`/`--sample` 없이)은 발송 없이 종료 — 승인 전 예시 글이 매일 발송되는 것을 방지.
 - `setup_schedule.ps1`은 Windows PowerShell 5.1이 한글을 읽도록 UTF-8 BOM으로 저장해야 함.
 
