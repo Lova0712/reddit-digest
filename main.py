@@ -20,7 +20,7 @@ from pathlib import Path
 import yaml
 from dotenv import load_dotenv
 
-from src import fetch, filter as post_filter, translate
+from src import fetch, filter as post_filter, pdf_maker, translate
 from src.store import Store
 
 ROOT = Path(__file__).parent
@@ -157,8 +157,16 @@ def main():
                 log.error("번역 실패 (%s): %s", p["id"], e)
 
         today = date.today().isoformat()
-        json_path, md_path = save_results(results, ROOT / cfg["output"]["pdf_dir"], today)
+        out_dir = ROOT / cfg["output"]["pdf_dir"]
+        json_path, md_path = save_results(results, out_dir, today)
         log.info("저장 완료: %s, %s", json_path.name, md_path.name)
+
+        # 5. PDF 만들기
+        ocfg = cfg["output"]
+        pdf_path = pdf_maker.make_pdf(
+            results, out_dir, today, ROOT / ocfg["font_path"], ROOT / ocfg["font_bold_path"]
+        )
+        log.info("PDF 생성: %s", pdf_path.name)
         # dry-run 에서는 DB 에 아무것도 기록하지 않음 (실제 실행 때 다시 처리되도록)
     finally:
         store.close()
