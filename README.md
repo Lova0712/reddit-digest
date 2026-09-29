@@ -1,7 +1,7 @@
 # 게임개발 커뮤니티 다이제스트
 
 게임개발 커뮤니티에서 입문 인디 개발자에게 유용한 글을 골라 **한국어로 번역·요약**하고,
-매일 **PDF를 Gmail로 보내고 Notion 데이터베이스에 정리**하는 개인 학습용 도구입니다.
+매일 **PDF를 Gmail로 보내고 Notion 데이터베이스에 정리**하고, **개인 디스코드 채널**에도 올리는 개인 학습용 도구입니다.
 
 | 출처 | 가져오는 방법 | 주로 나오는 글 |
 |---|---|---|
@@ -53,6 +53,14 @@ Mac/Linux 에서는 `.venv/bin/python`, `cp .env.example .env` 로 바꿔서 실
 1. https://myaccount.google.com/security 에서 **2단계 인증**을 켭니다.
 2. https://myaccount.google.com/apppasswords 에서 앱 비밀번호를 만듭니다 (16자리).
 3. `.env` 에 `GMAIL_USER`(보내는 주소), `GMAIL_APP_PASSWORD`(16자리), `GMAIL_TO`(받는 주소)를 넣습니다.
+
+### Discord (웹훅, 선택)
+개인 서버 채널에 매일 카드 형태로 올립니다. 봇을 만들거나 서버를 켜 둘 필요가 없습니다.
+1. 디스코드에서 올릴 채널의 **⚙️ 채널 편집 → 연동(Integrations) → 웹후크 → 새 웹후크**를 누릅니다.
+2. **웹후크 URL 복사**를 눌러 `.env` 의 `DISCORD_WEBHOOK_URL` 에 넣습니다.
+3. 끄고 싶으면 `config.yaml` 의 `discord.enabled` 를 `false` 로 바꿉니다.
+
+> 번역 글은 원작자의 콘텐츠이므로 **나만 보는 개인 서버**에만 연결하세요. 공개 서버에 올리면 재배포가 됩니다.
 
 ## 3. 실행
 
@@ -143,6 +151,7 @@ src/
   pdf_maker.py       PDF 생성 (reportlab + Noto Sans KR)
   mailer.py          Gmail 발송 (SMTP)
   notion_upload.py   Notion 업로드
+  discord_post.py    디스코드 웹훅 전송
   store.py           처리 기록 (SQLite)
 samples/             테스트용 예시 글 (가짜 데이터)
 fonts/               한글 폰트 (SIL Open Font License)

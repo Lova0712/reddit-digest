@@ -34,7 +34,8 @@ class FakeClient:
         self.pages = type("P", (), {})()
         self.pages.create = FakeEndpoint(self.calls, "pages.create", {"id": "page1", "url": "https://notion.so/page1"})
         self.data_sources = type("D", (), {})()
-        self.data_sources.query = FakeEndpoint(self.calls, "query", {"results": [{}] if existing else []})
+        self.data_sources.query = FakeEndpoint(self.calls, "query",
+                                               {"results": [{"url": "https://notion.so/old"}] if existing else []})
         self.blocks = type("B", (), {})()
         self.blocks.children = type("C", (), {})()
         self.blocks.children.append = FakeEndpoint(self.calls, "append", {})
@@ -79,7 +80,8 @@ def test_upload_splits_more_than_100_blocks(monkeypatch):
 def test_upload_skips_existing(monkeypatch):
     monkeypatch.setattr(notion_upload, "REQUEST_GAP", 0)
     client = FakeClient(existing=True)
-    assert notion_upload.upload_post(client, "ds1", fake_result(), "2026-09-29") is None
+    # 새로 만들지 않고, 이미 있는 페이지 주소를 돌려준다 (디스코드 링크용)
+    assert notion_upload.upload_post(client, "ds1", fake_result(), "2026-09-29") == "https://notion.so/old"
     assert not [c for c in client.calls if c[0] == "pages.create"]
 
 

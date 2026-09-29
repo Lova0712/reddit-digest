@@ -20,7 +20,7 @@ from pathlib import Path
 import yaml
 from dotenv import load_dotenv
 
-from src import fetch, filter as post_filter, mailer, notion_upload, pdf_maker, translate
+from src import discord_post, fetch, filter as post_filter, mailer, notion_upload, pdf_maker, translate
 from src.store import Store
 from src.text_util import byline
 
@@ -164,6 +164,22 @@ def send_mail(cfg, results, pdf_path, today):
         return False
 
 
+def send_discord(cfg, results, pdf_path, today):
+    """7-2. 디스코드 채널에 올린다. 웹훅 주소가 없으면 조용히 건너뜀."""
+    dcfg = cfg.get("discord", {})
+    webhook_url = os.getenv("DISCORD_WEBHOOK_URL")
+    if not dcfg.get("enabled") or not webhook_url:
+        log.info("디스코드 전송 건너뜀 (config.yaml 에서 꺼져 있거나 .env 에 DISCORD_WEBHOOK_URL 없음)")
+        return
+    try:
+        discord_post.send_digest(webhook_url, results, pdf_path, today,
+                                 username=dcfg.get("username", "게임개발 다이제스트"),
+                                 attach_pdf=dcfg.get("attach_pdf", True))
+        log.info("디스코드 전송 완료")
+    except Exception as e:
+        log.error("디스코드 전송 실패: %s", e)
+
+
 def upload_to_notion(cfg, results, today):
     """7. Notion 업로드. 성공한(또는 이미 있던) 글 id 집합을 돌려준다."""
     if not cfg["notion"]["enabled"]:
@@ -186,9 +202,8 @@ def upload_to_notion(cfg, results, today):
     ok = set()
     for r in results:
         try:
-            url = notion_upload.upload_post(client, data_source_id, r, today)
-            if url:
-                log.info("Notion 업로드: %s", r["title_ko"][:40])
+            # 페이지 주소를 기억해 두면 디스코드 카드에 "Notion 에서 전체 번역 보기" 링크를 달 수 있음
+            r["notion_url"] = notion_upload.upload_post(client, data_source_id, r, today)
             ok.add(r["id"])
         except Exception as e:
             log.error("Notion 업로드 실패 (%s): %s", r["id"], e)
@@ -244,7 +259,12 @@ def main():
         # 7. Notion 업로드 (이미 올라간 글은 원문 링크로 확인해서 건너뜀)
         notion_ok = upload_to_notion(cfg, results, today)
 
+        # 7-2. 디스코드 (Notion 다음에 보내야 카드에 Notion 링크를 달 수 있음)
+        if to_mail:
+            send_discord(cfg, to_mail, pdf_path, today)
+
         # 8. 기록: 메일·Notion 둘 다 끝난 글만 done. 나머지는 다음 실행 때 재시도
+        #    (디스코드는 알림용이라 실패해도 재시도하지 않고 기록만 남김)
         done = 0
         for r in results:
             mailed = r.get("mailed") or mail_ok

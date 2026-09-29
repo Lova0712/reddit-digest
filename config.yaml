@@ -103,6 +103,12 @@ mail:
 notion:
   enabled: true
 
+discord:
+  # .env 의 DISCORD_WEBHOOK_URL 채널로 보냅니다 (개인 서버용)
+  enabled: true
+  username: "게임개발 다이제스트"  # 채널에 보이는 보낸 사람 이름
+  attach_pdf: true                # PDF 파일도 함께 올리기
+
 # ───────────── 5. 기록 ─────────────
 storage:
   db_path: reddit_digest.db

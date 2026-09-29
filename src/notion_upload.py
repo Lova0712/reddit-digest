@@ -236,22 +236,24 @@ def build_properties(r, digest_date):
 
 # ───────────── 업로드 ─────────────
 
-def already_uploaded(client, data_source_id, permalink):
-    """같은 원문 링크의 페이지가 이미 있으면 True (재시도 때 중복 생성 방지)."""
+def find_existing(client, data_source_id, permalink):
+    """같은 원문 링크의 페이지가 이미 있으면 그 페이지 주소, 없으면 None (재시도 때 중복 생성 방지)."""
     res = call(
         client.data_sources.query,
         data_source_id=data_source_id,
         filter={"property": "원문 링크", "url": {"equals": permalink}},
         page_size=1,
     )
-    return bool(res.get("results"))
+    results = res.get("results") or []
+    return (results[0].get("url") or "") if results else None
 
 
 def upload_post(client, data_source_id, r, digest_date):
-    """글 하나를 Notion 페이지로 만든다. 만든 페이지 주소를 돌려준다 (이미 있으면 None)."""
-    if already_uploaded(client, data_source_id, r["permalink"]):
+    """글 하나를 Notion 페이지로 만들고 페이지 주소를 돌려준다. 이미 있으면 새로 만들지 않고 그 주소를 돌려준다."""
+    existing = find_existing(client, data_source_id, r["permalink"])
+    if existing is not None:
         log.info("Notion에 이미 있음, 건너뜀: %s", r["title_ko"][:40])
-        return None
+        return existing
 
     blocks = build_blocks(r)
     page = call(
@@ -263,4 +265,5 @@ def upload_post(client, data_source_id, r, digest_date):
     # 블록이 100개를 넘으면 나머지를 100개씩 이어 붙인다
     for start in range(MAX_BLOCKS, len(blocks), MAX_BLOCKS):
         call(client.blocks.children.append, block_id=page["id"], children=blocks[start:start + MAX_BLOCKS])
-    return page.get("url")
+    log.info("Notion 업로드: %s", r["title_ko"][:40])
+    return page.get("url") or ""

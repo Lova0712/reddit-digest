@@ -22,6 +22,7 @@
   - 모델은 CLI 별칭(`sonnet`, `haiku`)으로 지정, 결과는 `--output-format json` + `--json-schema`의 `structured_output`으로 받음.
 - PDF: `reportlab` + 한글 폰트(Noto Sans KR, `fonts/` 폴더에 ttf 포함). 한글 깨짐 반드시 확인.
 - Gmail: SMTP(`smtplib`, smtp.gmail.com:465) + 앱 비밀번호. Gmail API(OAuth)는 개인용 테스트 앱의 토큰이 7일마다 만료돼 매일 자동 발송에 부적합하여 쓰지 않음.
+- Discord: 웹훅(`requests.post`, 봇 계정·상시 서버 없음). 개인 서버 채널 전용 — 공개 서버 재배포 금지.
 - Notion: `notion-client` 3.x (API 2025-09-03: 데이터베이스 안의 data source에 페이지 생성)
 - 중복 방지: `sqlite3` (표준 라이브러리)
 - 설정: `.env` + `python-dotenv`, 출처·필터 규칙은 `config.yaml`
@@ -47,6 +48,7 @@ reddit-digest/
 │   ├── pdf_maker.py    # PDF 생성
 │   ├── mailer.py       # Gmail 발송
 │   ├── notion_upload.py# Notion 업로드 (칸 구성 자동 갱신 포함)
+│   ├── discord_post.py # 디스코드 웹훅 전송
 │   ├── store.py        # SQLite 처리 상태 기록
 │   ├── claude_cli.py   # claude -p 호출 (구독 사용, API 키 제거)
 │   ├── http_util.py    # 공통 GET (User-Agent, 재시도)
@@ -75,6 +77,9 @@ reddit-digest/
    - 속성: 제목(title), 출처(select), 원문 링크(url), 점수(number, 모르면 빈칸), 유용도(number), 태그(multi_select), 날짜(date, 수집한 날), 작성자(rich_text)
    - 예전 "서브레딧" 칸은 실행 시 `ensure_schema`가 "출처"로 자동 변경
    - Notion 제한: rich_text 하나당 2000자, 요청당 블록 100개 → 자동으로 쪼개서 보냄. 같은 원문 링크가 있으면 건너뜀.
+7-2. **Discord**: Notion 다음에 전송 (카드에 Notion 페이지 링크를 달기 위해). 첫 메시지에 제목+PDF 첨부, 이어서 글마다 카드(embed).
+   - 제한: 메시지당 카드 10장·5500자 이하로 묶음, 429면 `retry_after`만큼 대기, `allowed_mentions` 비움.
+   - 알림용이라 실패해도 재시도 상태를 남기지 않음 (메일·Notion 기준으로만 done 처리).
 8. **기록**: 상태 `translated`(번역만 됨) → `mailed`(메일만 됨) → `done`. 평가 탈락은 `rejected`.
    발송 실패 글은 다음 실행 때 번역 없이 발송만 재시도, 메일 중복 발송 없음.
 
@@ -92,6 +97,7 @@ reddit-digest/
 GMAIL_TO=
 GMAIL_USER=
 GMAIL_APP_PASSWORD=
+DISCORD_WEBHOOK_URL=
 NOTION_TOKEN=
 NOTION_DATABASE_ID=
 ```
