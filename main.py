@@ -1,13 +1,12 @@
 """
-Reddit 게임개발 다이제스트 - 전체 파이프라인 실행 파일
+게임개발 커뮤니티 다이제스트 - 전체 파이프라인 실행 파일
+(출처: Reddit RSS, dev.to, GameDev Stack Exchange)
 
 사용법
   python main.py                  전체 실행 (Notion 업로드, Gmail 발송까지)
   python main.py --dry-run        수집·선별·번역·PDF 만 하고 결과를 output/ 에 저장 (발송 안 함)
   python main.py --limit 3        번역할 글 개수를 3개로 제한 (테스트용)
-  python main.py --sample         Reddit 대신 samples/sample_posts.json 예시 글 사용
-
-Reddit 키(.env)가 없으면 자동으로 예시 글을 사용합니다.
+  python main.py --sample         실제 수집 대신 samples/sample_posts.json 예시 글 사용
 """
 
 import argparse
@@ -23,6 +22,7 @@ from dotenv import load_dotenv
 
 from src import fetch, filter as post_filter, mailer, notion_upload, pdf_maker, translate
 from src.store import Store
+from src.text_util import byline
 
 ROOT = Path(__file__).parent
 SAMPLE_PATH = ROOT / "samples" / "sample_posts.json"
@@ -30,10 +30,10 @@ log = logging.getLogger("main")
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(description="Reddit 게임개발 다이제스트")
+    parser = argparse.ArgumentParser(description="게임개발 커뮤니티 다이제스트")
     parser.add_argument("--dry-run", action="store_true", help="메일/Notion 발송 없이 결과만 저장")
     parser.add_argument("--limit", type=int, help="번역할 글 최대 개수 (테스트용)")
-    parser.add_argument("--sample", action="store_true", help="Reddit 대신 예시 글 사용")
+    parser.add_argument("--sample", action="store_true", help="실제 수집 대신 예시 글 사용")
     return parser.parse_args()
 
 
@@ -55,18 +55,18 @@ def setup_logging(log_path):
 
 
 def collect_posts(cfg, use_sample):
-    """글 수집 (Reddit 또는 예시 파일)."""
+    """글 수집 (여러 출처 또는 예시 파일). (글 목록, 출처 목록)을 돌려준다."""
     if use_sample:
         log.info("예시 글(samples/sample_posts.json)을 사용합니다.")
-        return fetch.load_sample_posts(SAMPLE_PATH), None
-    reddit = fetch.make_reddit()
-    return fetch.fetch_listings(reddit, cfg["reddit"]), reddit
+        return fetch.load_sample_posts(SAMPLE_PATH), {}
+    sources = fetch.make_sources(cfg)
+    return fetch.fetch_all(sources), sources
 
 
 def select_and_translate(cfg, args, store, use_sample, record):
     """수집 → 중복 제거 → 선별 → 번역. 새로 번역한 결과 목록을 돌려준다."""
     # 1. 수집
-    posts, reddit = collect_posts(cfg, use_sample)
+    posts, sources = collect_posts(cfg, use_sample)
     log.info("수집: %d개", len(posts))
 
     # 2. 중복 제거 (이미 기록된 글 제외). 예시 글은 테스트용이라 기록과 상관없이 매번 처리
@@ -89,18 +89,14 @@ def select_and_translate(cfg, args, store, use_sample, record):
         max_rate = min(max_rate, args.limit * 3)
     candidates = candidates[:max_rate]
 
-    # 평가 전에 댓글 가져오기 (예시 글에는 이미 들어 있음)
-    if reddit:
-        for p in candidates:
-            try:
-                p["comments"] = fetch.fetch_comments(reddit, p, cfg["reddit"]["comments_per_post"], cfg["reddit"])
-            except Exception as e:
-                log.error("댓글 가져오기 실패 (%s): %s", p["id"], e)
-
     # 3-2. Claude 유용도 평가 → 채택
     rated = post_filter.rate_posts(candidates, cfg["translate"])
     selected = post_filter.select_posts(rated, fcfg["min_usefulness_score"], max_count)
     log.info("채택: %d개 (기준 %d점 이상)", len(selected), fcfg["min_usefulness_score"])
+
+    # 채택된 글만 댓글 가져오기 (Reddit RSS 는 요청 제한이 엄격해서 꼭 필요한 글만)
+    # Stack Exchange 답변과 예시 글 댓글은 이미 들어 있어서 건너뜀
+    fetch.fill_comments(selected, sources, cfg["translate"]["comments_per_post"])
 
     # 기준 점수에 못 미친 글은 다음에 다시 평가하지 않도록 기록
     if record:
@@ -130,13 +126,12 @@ def save_results(results, out_dir, today):
 
     json_path.write_text(json.dumps(results, ensure_ascii=False, indent=2), encoding="utf-8")
 
-    lines = [f"# Reddit 게임개발 다이제스트 {today}", f"총 {len(results)}개 글", ""]
+    lines = [f"# {pdf_maker.TITLE} {today}", f"총 {len(results)}개 글", ""]
     for i, r in enumerate(results, 1):
         lines += [
             f"## {i}. {r['title_ko']}",
             f"*{r['original_title']}*",
-            f"r/{r['subreddit']} · u/{r['author']} · {r['created_date']} · "
-            f"추천 {r['score']} · 유용도 {r['usefulness']}/10 · 태그: {', '.join(r['tags'])}",
+            f"{byline(r)} · 유용도 {r['usefulness']}/10 · 태그: {', '.join(r['tags'])}",
             f"원문: {r['permalink']}",
             "",
             "### 핵심 요약",
@@ -183,6 +178,7 @@ def upload_to_notion(cfg, results, today):
     client = notion_upload.make_client(token)
     try:
         data_source_id = notion_upload.get_data_source_id(client, database_id)
+        notion_upload.ensure_schema(client, data_source_id)  # 칸 구성이 바뀌었으면 맞춰 고침
     except Exception as e:
         log.error("Notion 데이터베이스에 연결하지 못했습니다: %s", e)
         return set()
@@ -208,16 +204,9 @@ def main():
     cfg = yaml.safe_load((ROOT / "config.yaml").read_text(encoding="utf-8"))
     setup_logging(ROOT / cfg["storage"]["log_path"])
 
-    use_sample = args.sample or not fetch.has_reddit_keys()
-    if not args.sample and use_sample:
-        if not args.dry_run:
-            # Reddit 승인 전에 자동 실행되면 매일 같은 예시 글이 발송되므로 막아 둔다.
-            # (테스트로 보내 보려면 --sample 을 붙여서 실행)
-            log.warning(".env 에 Reddit 키가 없어서 발송하지 않고 종료합니다. (Reddit API 승인 대기 중)")
-            return 0
-        log.warning(".env 에 Reddit 키가 없어서 예시 글을 사용합니다.")
+    use_sample = args.sample
 
-    # DB 에 기록하는 경우: 실제 실행 + 실제 Reddit 글일 때만
+    # DB 에 기록하는 경우: 실제 실행 + 실제 수집한 글일 때만
     # (dry-run 이나 예시 글은 테스트라서 기록하지 않음)
     record = not args.dry_run and not use_sample
 

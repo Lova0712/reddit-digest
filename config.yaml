@@ -1,24 +1,50 @@
-# Reddit 다이제스트 설정 파일
+# 게임개발 커뮤니티 다이제스트 설정 파일
 # 숫자나 목록을 바꾸면 코드 수정 없이 동작을 조정할 수 있습니다.
 
-# ───────────── 1. 수집 ─────────────
-reddit:
-  subreddits:
-    - gamedev
-    - indiedev
-    - Unity3D
-  top_time_filter: week      # top 글 기간: hour, day, week, month, year, all
-  max_posts_per_subreddit: 25  # 서브레딧마다 top/hot 각각 가져올 최대 개수
-  comments_per_post: 10      # 글마다 읽어올 상위 댓글 수
-  request_delay_seconds: 2   # 요청 사이 대기 시간 (Reddit 요청 제한 준수)
-  max_retries: 3             # 에러 시 재시도 횟수 (지수 백오프)
+# ───────────── 공통 ─────────────
+http:
+  # 모든 요청에 붙이는 프로그램 소개 (누가 요청하는지 상대 서버가 알 수 있게)
+  user_agent: "reddit-digest/0.2 (personal daily reader; +https://github.com/Lova0712/reddit-digest)"
+
+# ───────────── 1. 수집 (출처별) ─────────────
+# enabled: false 로 바꾸면 그 출처는 쓰지 않습니다.
+sources:
+  reddit_rss:                # Reddit 공개 RSS (추천 수·댓글 수 정보 없음 → 인기 순위로 대신)
+    enabled: true
+    subreddits:
+      - gamedev
+      - indiedev
+      - Unity3D
+    top_time_filter: week    # top 글 기간: day, week, month
+    max_posts_per_subreddit: 15
+    request_delay_seconds: 10  # 요청 사이 최소 대기 (Reddit 이 더 기다리라고 하면 그만큼 더 기다림)
+
+  devto:                     # dev.to 공식 API
+    enabled: true
+    tags:
+      - gamedev
+      - unity3d
+    top_days: 7              # 최근 며칠 동안의 인기 글
+    max_posts_per_tag: 30
+    min_reactions: 3         # 최소 반응(좋아요 등) 수
+    min_comments: 0          # 최소 댓글 수
+    request_delay_seconds: 1
+
+  stackexchange:             # Game Development Stack Exchange 공식 API
+    enabled: true
+    site: gamedev
+    # classic: 역대 추천 많은 명작 Q&A (이미 본 질문은 건너뛰어 매일 새로 나옴)
+    # recent : 최근 days 일 동안의 새 질문 (GameDev SE 는 새 질문이 한 달 20개 정도로 적음)
+    mode: classic
+    days: 30                 # recent 모드에서만 사용
+    max_questions: 30
+    min_score: 10            # 질문 최소 추천 수 (recent 모드면 1~2 정도로 낮출 것)
+    min_answers: 1           # 답변이 1개 이상 달린 질문만
+    answers_per_question: 3
 
 # ───────────── 2. 선별 ─────────────
 filter:
-  # 규칙 필터 (Claude 평가 전에 먼저 걸러서 비용 절약)
-  min_score: 20              # 최소 upvote
-  min_comments: 5            # 최소 댓글 수
-  min_body_length: 300       # 본문 최소 글자 수 (이보다 짧으면 제외)
+  min_body_length: 300       # 본문 최소 글자 수 (링크·이미지만 있는 글도 여기서 빠짐)
 
   # 제목에 이 문구가 있으면 제외 (대소문자 무시)
   # 주의: "wishlist" 한 단어만 넣으면 "위시리스트 7천 개 모은 방법" 같은 좋은 마케팅 글도 빠지므로
@@ -34,15 +60,7 @@ filter:
     - "our new game"
     - "steam page is live"
 
-  # 이 플레어(분류 태그)는 제외
-  exclude_flairs:
-    - Meme
-    - Humor
-    - Video
-    - Show Off
-    - Promotion
-
-  # 이 단어가 있으면 우선순위를 높임 (Claude 평가 시 참고)
+  # 이 단어가 있으면 먼저 평가하고 Claude 평가 때 참고로 알려 줌
   priority_keywords:
     - tutorial
     - postmortem
@@ -59,7 +77,7 @@ filter:
 
   # Claude 유용도 평가 (1~10점) 기준
   min_usefulness_score: 7
-  max_candidates_to_rate: 30  # 규칙 통과 글 중 Claude로 평가할 최대 개수 (구독 한도 절약)
+  max_candidates_to_rate: 24  # 규칙 통과 글 중 Claude로 평가할 최대 개수 (출처별로 번갈아 채움)
 
 # ───────────── 3. 번역·요약 ─────────────
 # claude CLI(구독)로 호출합니다. 모델은 CLI 별칭으로 적습니다.
@@ -70,6 +88,7 @@ translate:
   timeout_seconds: 300       # 글 하나 처리 최대 대기 시간
   max_posts_per_day: 10      # 하루 최대 번역 글 수 (구독 사용 한도 절약)
   max_body_chars: 8000       # 이보다 긴 본문은 앞부분만 보내고 요약 번역
+  comments_per_post: 8       # 채택된 글마다 가져올 댓글 수
 
 # ───────────── 4. 출력·발송 ─────────────
 output:
@@ -79,7 +98,7 @@ output:
 
 mail:
   # Gmail SMTP + 앱 비밀번호로 보냅니다 (.env 의 GMAIL_USER / GMAIL_APP_PASSWORD / GMAIL_TO)
-  subject_prefix: "[Reddit 게임개발 다이제스트]"
+  subject_prefix: "[게임개발 다이제스트]"
 
 notion:
   enabled: true

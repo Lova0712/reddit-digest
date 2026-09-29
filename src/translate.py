@@ -3,7 +3,8 @@
 
 결과 dict 모양
 {
-  "id", "subreddit", "author", "created_date", "permalink", "score", "usefulness",
+  "id", "source", "community"(출처 이름), "author", "created_date", "permalink",
+  "score", "num_comments" (모르면 None), "usefulness",
   "original_title",
   "title_ko"   : 한국어 제목,
   "summary"    : 핵심 요약 3~5줄 (리스트),
@@ -27,7 +28,7 @@ TAG_OPTIONS = [
 ]
 
 TRANSLATE_SYSTEM_PROMPT = (
-    "당신은 게임 개발 전문 번역가입니다. 영어 Reddit 글을 입문 인디 게임 개발자가 "
+    "당신은 게임 개발 전문 번역가입니다. 영어 게임개발 커뮤니티 글(Reddit, dev.to, Stack Exchange)을 입문 인디 게임 개발자가 "
     "읽기 쉬운 자연스러운 한국어로 번역하고 요약합니다."
 )
 
@@ -67,7 +68,8 @@ TRANSLATE_RULES = """번역 규칙:
 2. summary: 이 글에서 입문 개발자가 가져갈 핵심을 3~5개의 짧은 문장으로.
 3. body_ko: 본문을 한국어로 번역. 본문이 길면 핵심 부분 위주로 요약 번역하고,
    생략한 부분은 "(중략)"으로 표시. 코드는 번역하지 말고 그대로 둘 것.
-4. comments: 아래 댓글 중 유용한 것 1~3개를 골라 작성자와 함께 한국어로 요약. 쓸만한 댓글이 없으면 빈 목록.
+4. comments: 아래 댓글(또는 답변) 중 유용한 것 1~3개를 골라 작성자와 함께 한국어로 요약.
+   [채택된 답변] 표시가 있으면 요약 앞에 "(채택)"을 붙일 것. 쓸만한 댓글이 없으면 빈 목록.
 5. tags: 지정된 분류 중 1~3개.
 6. 게임 개발 용어는 처음 나올 때 괄호로 원어를 함께 적을 것. 예: 오브젝트 풀링(Object Pooling)
 7. 원문에 없는 내용을 지어내지 말 것."""
@@ -78,12 +80,12 @@ def build_translate_prompt(post, max_body_chars):
     if len(body) > max_body_chars:
         body = body[:max_body_chars] + "\n\n[... 원문이 길어서 이후 생략됨 ...]"
     comments = "\n\n".join(
-        f"[댓글 작성자: {c['author']} / 추천 {c['score']}]\n{c['body'][:1500]}"
-        for c in post.get("comments", [])
+        f"[댓글 작성자: {c['author']}]\n{c['body'][:1500]}"
+        for c in (post.get("comments") or [])
     ) or "(댓글 없음)"
     return f"""{TRANSLATE_RULES}
 
-[서브레딧] r/{post['subreddit']}
+[출처] {post['community']}
 [원문 제목] {post['title']}
 
 [원문 본문]
@@ -108,11 +110,13 @@ def translate_post(post, translate_cfg, ask=claude_cli.ask_json):
     return {
         # 원문 정보 (출처 표기용 - 항상 함께 보관)
         "id": post["id"],
-        "subreddit": post["subreddit"],
+        "source": post["source"],
+        "community": post["community"],
         "author": post["author"],
         "created_date": datetime.fromtimestamp(post["created_utc"]).strftime("%Y-%m-%d"),
         "permalink": post["permalink"],
-        "score": post["score"],
+        "score": post.get("score"),
+        "num_comments": post.get("num_comments"),
         "usefulness": post.get("usefulness"),
         "original_title": post["title"],
         # 번역 결과

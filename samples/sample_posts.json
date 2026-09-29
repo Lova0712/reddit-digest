@@ -1,123 +1,137 @@
 {
-  "_note": "가짜 예시 데이터입니다. 실제 Reddit 글이 아니며, Reddit API 승인 전에 파이프라인을 시험하기 위해 직접 만든 글입니다. 필터가 제대로 거르는지 보려고 일부러 '제외되어야 할 글'도 섞어 두었습니다.",
+  "_note": "가짜 예시 데이터입니다. 실제 글이 아니며, 파이프라인을 시험하기 위해 직접 만든 글입니다. 필터가 제대로 거르는지 보려고 일부러 '제외되어야 할 글'(홍보 글, 이미지 글, 짧은 글)도 섞어 두었습니다.",
   "posts": [
     {
-      "id": "sample01",
-      "subreddit": "gamedev",
+      "id": "sample:01",
+      "source": "reddit_rss",
+      "community": "r/gamedev",
       "title": "[SAMPLE] Postmortem: my first Steam launch after 2 years solo - numbers and lessons",
       "author": "sample_author_1",
       "created_utc": 1790000000,
-      "score": 850,
-      "num_comments": 120,
       "permalink": "https://www.reddit.com/r/gamedev/comments/sample01/",
-      "url": "https://www.reddit.com/r/gamedev/comments/sample01/",
       "selftext": "I released my first commercial game, a small roguelite deckbuilder, on Steam three weeks ago after two years of evenings and weekends. Here is everything I wish I had known.\n\nNumbers: 4,200 wishlists at launch, 610 copies sold in the first week, 1,050 after three weeks. Price was $9.99 with a 15% launch discount. Refund rate was 7%.\n\nWhat worked:\n1. Steam Next Fest. My demo brought in about 1,800 wishlists in one week, more than all my social media posts combined.\n2. Emailing small YouTubers directly. I sent 60 emails with a short GIF and a key. 9 made videos; two of them drove most of the launch sales.\n3. Cutting scope. I removed a whole crafting system six months before launch. Nobody has asked for it.\n\nWhat did not work:\n1. Posting daily on Twitter. Lots of time, almost no wishlists.\n2. Launching in the same week as a big release in my genre.\n3. Not having a trailer that shows gameplay in the first 5 seconds.\n\nIf you are starting out: make the demo early, get into Next Fest, and treat your Steam capsule art as the most important marketing asset you have.",
-      "flair": "Postmortem",
-      "is_self": true,
-      "post_hint": "self",
-      "over_18": false,
-      "stickied": false,
+      "score": null,
+      "num_comments": null,
+      "rank": 1,
+      "tags": [],
       "comments": [
-        {"author": "sample_commenter_a", "score": 310, "body": "Great writeup. The Next Fest point matches my experience exactly. One tip: update your capsule art before Next Fest, not after, because the traffic spike is where it matters most."},
-        {"author": "sample_commenter_b", "score": 150, "body": "7% refund rate is actually healthy for the genre. Anything under 10% is fine. Did you track which YouTuber brought which sales? Steam UTM links help with that."},
-        {"author": "sample_commenter_c", "score": 40, "body": "Congrats on shipping!"}
+        {
+          "author": "sample_commenter_a",
+          "score": null,
+          "body": "Great writeup. The Next Fest point matches my experience exactly. One tip: update your capsule art before Next Fest, not after, because the traffic spike is where it matters most."
+        },
+        {
+          "author": "sample_commenter_b",
+          "score": null,
+          "body": "7% refund rate is actually healthy for the genre. Anything under 10% is fine. Did you track which YouTuber brought which sales? Steam UTM links help with that."
+        },
+        {
+          "author": "sample_commenter_c",
+          "score": null,
+          "body": "Congrats on shipping!"
+        }
       ]
     },
     {
-      "id": "sample02",
-      "subreddit": "Unity3D",
+      "id": "sample:02",
+      "source": "reddit_rss",
+      "community": "r/Unity3D",
       "title": "[SAMPLE] Object pooling cut my GC spikes from 40ms to under 2ms - here's the simple setup",
       "author": "sample_author_2",
       "created_utc": 1790050000,
-      "score": 430,
-      "num_comments": 55,
       "permalink": "https://www.reddit.com/r/Unity3D/comments/sample02/",
-      "url": "https://www.reddit.com/r/Unity3D/comments/sample02/",
       "selftext": "My bullet-hell prototype stuttered every few seconds. The Profiler showed garbage collection spikes of around 40ms, caused by Instantiate and Destroy on hundreds of bullets per second.\n\nThe fix was Unity's built-in ObjectPool<T> (UnityEngine.Pool, available since 2021). Setup:\n\n```csharp\nusing UnityEngine.Pool;\n\nObjectPool<Bullet> pool = new ObjectPool<Bullet>(\n    createFunc: () => Instantiate(bulletPrefab),\n    actionOnGet: b => b.gameObject.SetActive(true),\n    actionOnRelease: b => b.gameObject.SetActive(false),\n    defaultCapacity: 200);\n```\n\nThen call pool.Get() instead of Instantiate and pool.Release(bullet) instead of Destroy. Bullets need a reference to the pool so they can release themselves when they hit something or leave the screen.\n\nThings that tripped me up: reset the bullet's velocity and trail renderer in actionOnGet, otherwise reused bullets keep old state. Also do not Release the same object twice; the pool will throw in the editor, which is actually helpful.\n\nResult: GC spikes are gone, frame time is flat at 2ms for scripts.",
-      "flair": "Resources/Tutorial",
-      "is_self": true,
-      "post_hint": "self",
-      "over_18": false,
-      "stickied": false,
+      "score": null,
+      "num_comments": null,
+      "rank": 2,
+      "tags": [],
       "comments": [
-        {"author": "sample_commenter_d", "score": 120, "body": "Also worth enabling 'Incremental GC' in Player Settings. It spreads the collection over multiple frames, so even the remaining garbage causes smaller hitches."},
-        {"author": "sample_commenter_e", "score": 60, "body": "For trail renderers, call trail.Clear() in actionOnGet. That was the part that took me an hour to figure out."}
+        {
+          "author": "sample_commenter_d",
+          "score": null,
+          "body": "Also worth enabling 'Incremental GC' in Player Settings. It spreads the collection over multiple frames, so even the remaining garbage causes smaller hitches."
+        },
+        {
+          "author": "sample_commenter_e",
+          "score": null,
+          "body": "For trail renderers, call trail.Clear() in actionOnGet. That was the part that took me an hour to figure out."
+        }
       ]
     },
     {
-      "id": "sample03",
-      "subreddit": "indiedev",
+      "id": "sample:03",
+      "source": "reddit_rss",
+      "community": "r/indiedev",
       "title": "[SAMPLE] Please wishlist my game! New trailer inside",
       "author": "sample_author_3",
       "created_utc": 1790060000,
-      "score": 45,
-      "num_comments": 8,
       "permalink": "https://www.reddit.com/r/indiedev/comments/sample03/",
-      "url": "https://example.com/sample-trailer",
       "selftext": "",
-      "flair": "",
-      "is_self": false,
-      "post_hint": "rich:video",
-      "over_18": false,
-      "stickied": false,
+      "score": null,
+      "num_comments": null,
+      "rank": 3,
+      "tags": [],
       "comments": []
     },
     {
-      "id": "sample04",
-      "subreddit": "gamedev",
+      "id": "sample:04",
+      "source": "reddit_rss",
+      "community": "r/gamedev",
       "title": "[SAMPLE] When the bug becomes a feature",
       "author": "sample_author_4",
       "created_utc": 1790070000,
-      "score": 2100,
-      "num_comments": 95,
       "permalink": "https://www.reddit.com/r/gamedev/comments/sample04/",
-      "url": "https://example.com/sample-image.png",
       "selftext": "",
-      "flair": "Meme",
-      "is_self": false,
-      "post_hint": "image",
-      "over_18": false,
-      "stickied": false,
+      "score": null,
+      "num_comments": null,
+      "rank": 4,
+      "tags": [],
       "comments": []
     },
     {
-      "id": "sample05",
-      "subreddit": "gamedev",
+      "id": "sample:05",
+      "source": "reddit_rss",
+      "community": "r/gamedev",
       "title": "[SAMPLE] How do you stop scope creep as a solo dev? My project has tripled in size",
       "author": "sample_author_5",
       "created_utc": 1790080000,
-      "score": 210,
-      "num_comments": 90,
       "permalink": "https://www.reddit.com/r/gamedev/comments/sample05/",
-      "url": "https://www.reddit.com/r/gamedev/comments/sample05/",
       "selftext": "I started a small 2D platformer eight months ago with a plan for 20 levels. Since then I added a crafting system, a dialogue system, a skill tree and an open hub world. Every feature felt small when I added it, but now I estimate at least two more years of work and my motivation is dropping.\n\nFor those of you who actually shipped solo projects: how do you decide what to cut? Do you write a design document and stick to it, or set a deadline first? I keep thinking every feature is what will make the game stand out.",
-      "flair": "Question",
-      "is_self": true,
-      "post_hint": "self",
-      "over_18": false,
-      "stickied": false,
+      "score": null,
+      "num_comments": null,
+      "rank": 5,
+      "tags": [],
       "comments": [
-        {"author": "sample_commenter_f", "score": 280, "body": "Write down the one sentence that describes your game's core fun. For every feature, ask: does this make that sentence stronger? If not, it goes into a 'sequel' document. You are not deleting ideas, you are parking them."},
-        {"author": "sample_commenter_g", "score": 190, "body": "Set a release date and work backwards. Put it on a Steam page even. A fixed date forces cutting decisions that feel impossible otherwise."},
-        {"author": "sample_commenter_h", "score": 75, "body": "Build a vertical slice: one level, fully polished, with only the core mechanic. If that is not fun, no crafting system will save it."}
+        {
+          "author": "sample_commenter_f",
+          "score": null,
+          "body": "Write down the one sentence that describes your game's core fun. For every feature, ask: does this make that sentence stronger? If not, it goes into a 'sequel' document. You are not deleting ideas, you are parking them."
+        },
+        {
+          "author": "sample_commenter_g",
+          "score": null,
+          "body": "Set a release date and work backwards. Put it on a Steam page even. A fixed date forces cutting decisions that feel impossible otherwise."
+        },
+        {
+          "author": "sample_commenter_h",
+          "score": null,
+          "body": "Build a vertical slice: one level, fully polished, with only the core mechanic. If that is not fun, no crafting system will save it."
+        }
       ]
     },
     {
-      "id": "sample06",
-      "subreddit": "Unity3D",
+      "id": "sample:06",
+      "source": "reddit_rss",
+      "community": "r/Unity3D",
       "title": "[SAMPLE] is unity good",
       "author": "sample_author_6",
       "created_utc": 1790090000,
-      "score": 3,
-      "num_comments": 12,
       "permalink": "https://www.reddit.com/r/Unity3D/comments/sample06/",
-      "url": "https://www.reddit.com/r/Unity3D/comments/sample06/",
       "selftext": "title",
-      "flair": "Question",
-      "is_self": true,
-      "post_hint": "self",
-      "over_18": false,
-      "stickied": false,
+      "score": null,
+      "num_comments": null,
+      "rank": 6,
+      "tags": [],
       "comments": []
     }
   ]

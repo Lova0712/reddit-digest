@@ -12,6 +12,8 @@ from email.message import EmailMessage
 from html import escape
 from pathlib import Path
 
+from src.pdf_maker import TITLE
+
 SMTP_HOST = "smtp.gmail.com"
 SMTP_PORT = 465  # SSL
 
@@ -24,11 +26,11 @@ def build_message(results, pdf_path, day, sender, to, subject_prefix):
     msg["To"] = to
 
     # 1) 글자만 보이는 메일 앱용 본문
-    lines = [f"Reddit 게임개발 다이제스트 {day}", f"오늘의 글 {len(results)}개 (자세한 내용은 첨부 PDF)", ""]
+    lines = [f"{TITLE} {day}", f"오늘의 글 {len(results)}개 (자세한 내용은 첨부 PDF)", ""]
     for i, r in enumerate(results, 1):
         lines += [
             f"{i}. {r['title_ko']}",
-            f"   r/{r['subreddit']} · u/{r['author']} · 유용도 {r['usefulness']}/10",
+            f"   {r['community']} · {r['author']} · 유용도 {r['usefulness']}/10",
             f"   {r['permalink']}",
             "",
         ]
@@ -39,14 +41,14 @@ def build_message(results, pdf_path, day, sender, to, subject_prefix):
     items = "".join(
         f'<li style="margin-bottom:12px">'
         f'<a href="{escape(r["permalink"])}" style="font-weight:bold;color:#1C64F2">{escape(r["title_ko"])}</a><br>'
-        f'<span style="color:#666;font-size:13px">r/{escape(r["subreddit"])} · u/{escape(r["author"])}'
+        f'<span style="color:#666;font-size:13px">{escape(r["community"])} · {escape(r["author"])}'
         f' · 유용도 {r["usefulness"]}/10 · {escape(", ".join(r["tags"]))}</span><br>'
         f'<span style="font-size:14px">{escape(r["summary"][0]) if r["summary"] else ""}</span></li>'
         for r in results
     )
     html = (
         f'<div style="font-family:sans-serif;max-width:640px">'
-        f'<h2 style="margin-bottom:4px">Reddit 게임개발 다이제스트</h2>'
+        f'<h2 style="margin-bottom:4px">{TITLE}</h2>'
         f'<p style="color:#666;margin-top:0">{day} · 오늘의 글 {len(results)}개 · 자세한 내용은 첨부 PDF</p>'
         f'<ol style="padding-left:20px">{items}</ol>'
         f'<p style="color:#999;font-size:12px">개인 학습용 번역입니다. 원문 저작권은 각 작성자에게 있습니다.</p>'

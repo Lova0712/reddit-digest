@@ -17,11 +17,13 @@ BOLD = ROOT / "fonts" / "NotoSansKR-Bold.ttf"
 def fake_result(i):
     return {
         "id": f"t{i}",
-        "subreddit": "gamedev",
+        "source": "reddit_rss",
+        "community": "r/gamedev",
         "author": "tester",
         "created_date": "2026-09-29",
         "permalink": f"https://www.reddit.com/r/gamedev/comments/t{i}/",
-        "score": 100,
+        "score": None,  # Reddit RSS 처럼 추천 수를 모르는 경우
+        "num_comments": None,
         "usefulness": 8,
         "original_title": "Use ObjectPool<T> & save GC",  # 특수문자 < > & 가 있어도 깨지면 안 됨
         "title_ko": f"테스트 글 {i}: 오브젝트 풀링(Object Pooling)",

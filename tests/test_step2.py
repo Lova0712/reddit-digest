@@ -39,15 +39,22 @@ def test_store_skips_done_and_rejected(tmp_path):
 def test_rule_filter_keeps_useful_and_drops_junk():
     passed = post_filter.rule_filter(sample_posts(), CFG["filter"])
     ids = {p["id"] for p in passed}
-    assert ids == {"sample01", "sample02", "sample05"}  # 포스트모템, 튜토리얼, 좋은 Q&A
+    assert ids == {"sample:01", "sample:02", "sample:05"}  # 포스트모템, 튜토리얼, 좋은 Q&A
 
 
 def test_rule_filter_reasons():
     posts = {p["id"]: p for p in sample_posts()}
     f = CFG["filter"]
-    assert "키워드" in post_filter.check_rules(posts["sample03"], f)  # 위시리스트 홍보
-    assert "플레어" in post_filter.check_rules(posts["sample04"], f)  # 밈
-    assert "추천 수" in post_filter.check_rules(posts["sample06"], f)  # 추천 수 부족
+    assert "키워드" in post_filter.check_rules(posts["sample:03"], f)  # 위시리스트 홍보
+    assert "짧음" in post_filter.check_rules(posts["sample:04"], f)    # 이미지만 있는 밈
+    assert "짧음" in post_filter.check_rules(posts["sample:06"], f)    # 내용 없는 질문
+
+
+def test_interleave_by_source():
+    posts = [{"id": i, "source": s} for i, s in
+             [("r1", "reddit_rss"), ("r2", "reddit_rss"), ("r3", "reddit_rss"), ("d1", "devto"), ("s1", "stackexchange")]]
+    mixed = post_filter.interleave_by_source(posts)
+    assert [p["id"] for p in mixed] == ["r1", "d1", "s1", "r2", "r3"]
 
 
 def test_wishlist_marketing_post_is_not_excluded():
@@ -68,7 +75,7 @@ def test_rate_and_select():
     passed = post_filter.rule_filter(sample_posts(), CFG["filter"])
     rated = post_filter.rate_posts(passed, CFG["translate"], ask=fake_rating)
     selected = post_filter.select_posts(rated, min_score=7, max_count=10)
-    assert [p["id"] for p in selected] == ["sample01"]
+    assert [p["id"] for p in selected] == ["sample:01"]
 
 
 def test_rate_continues_after_one_failure():

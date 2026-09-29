@@ -23,6 +23,9 @@ from reportlab.platypus import (
 )
 from reportlab.platypus.tableofcontents import TableOfContents
 
+from src.text_util import byline
+
+TITLE = "게임개발 커뮤니티 다이제스트"
 FONT = "NotoSansKR"
 FONT_BOLD = "NotoSansKR-Bold"
 
@@ -144,16 +147,16 @@ def draw_footer(canvas, doc):
 # ───────────── PDF 만들기 ─────────────
 
 def cover_page(results, day, styles):
-    subs = sorted({r["subreddit"] for r in results})
+    communities = sorted({r["community"] for r in results})
     flows = [
         Spacer(1, 70 * mm),
-        Paragraph("Reddit 게임개발 다이제스트", styles["cover_title"]),
+        Paragraph(TITLE, styles["cover_title"]),
         Paragraph(day, styles["cover_sub"]),
         Spacer(1, 6 * mm),
         Paragraph(f"오늘의 글 {len(results)}개", styles["cover_sub"]),
     ]
-    if subs:
-        flows.append(Paragraph(" · ".join(f"r/{s}" for s in subs), styles["cover_sub"]))
+    if communities:
+        flows.append(Paragraph(" · ".join(escape(c) for c in communities), styles["cover_sub"]))
     flows.append(PageBreak())
     return flows
 
@@ -164,10 +167,7 @@ def post_section(i, r, styles):
     title.toc_key = f"post{i}"  # 목차에 등록할 표시
     title.toc_text = f"{i}. {r['title_ko']}"
 
-    meta = (
-        f"r/{escape(r['subreddit'])} · u/{escape(r['author'])} · {r['created_date']} · "
-        f"추천 {r['score']} · 유용도 {r['usefulness']}/10"
-    )
+    meta = f"{escape(byline(r))} · 유용도 {r['usefulness']}/10"
     if r.get("tags"):
         meta += " · " + ", ".join(escape(t) for t in r["tags"])
     link = escape(r["permalink"])
@@ -232,7 +232,7 @@ def make_pdf(results, out_dir, day, regular_font, bold_font):
             story.append(PageBreak())  # 글마다 새 페이지에서 시작 (마지막 빈 페이지 방지)
         story += post_section(i, r, styles)
 
-    doc = DigestDoc(path, title=f"Reddit 게임개발 다이제스트 {day}", author="reddit-digest")
+    doc = DigestDoc(path, title=f"{TITLE} {day}", author="reddit-digest")
     # 목차의 페이지 번호를 채우려면 두 번 이상 조판해야 해서 multiBuild 사용
     doc.multiBuild(story)
     return path

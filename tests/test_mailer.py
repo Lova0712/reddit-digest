@@ -12,7 +12,7 @@ from src import mailer
 
 def fake_result(i):
     return {
-        "id": f"t{i}", "subreddit": "gamedev", "author": "tester", "usefulness": 8,
+        "id": f"t{i}", "source": "reddit_rss", "community": "r/gamedev", "author": "tester", "usefulness": 8,
         "permalink": f"https://www.reddit.com/r/gamedev/comments/t{i}/",
         "title_ko": f"테스트 글 {i} <특수문자>", "summary": ["첫 요약"], "tags": ["Unity"],
     }

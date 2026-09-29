@@ -9,8 +9,9 @@ from src.store import Store
 
 def fake_result(body="본문입니다."):
     return {
-        "id": "t1", "subreddit": "gamedev", "author": "tester", "created_date": "2026-09-29",
-        "permalink": "https://www.reddit.com/r/gamedev/comments/t1/", "score": 100, "usefulness": 8,
+        "id": "devto:1", "source": "devto", "community": "dev.to #gamedev", "author": "tester",
+        "created_date": "2026-09-29", "permalink": "https://dev.to/tester/t1", "score": 37, "num_comments": 5,
+        "usefulness": 8,
         "original_title": "Original", "title_ko": "테스트 글", "summary": ["요약1", "**굵게** 요약2"],
         "body_ko": body, "comments": [{"author": "c1", "summary": "댓글"}], "tags": ["Unity"],
     }
@@ -85,8 +86,28 @@ def test_upload_skips_existing(monkeypatch):
 def test_store_keeps_translation_for_retry(tmp_path):
     store = Store(tmp_path / "t.db")
     store.save_translation(fake_result())
-    assert store.is_processed("t1")
+    assert store.is_processed("devto:1")
     assert store.pending_translations()[0]["title_ko"] == "테스트 글"
-    store.mark("t1", "done")
+    store.mark("devto:1", "done")
     assert store.pending_translations() == []
     store.close()
+
+
+def test_ensure_schema_renames_old_column(monkeypatch):
+    """예전 '서브레딧' 칸이 있으면 '출처'로 이름을 바꾼다."""
+    monkeypatch.setattr(notion_upload, "REQUEST_GAP", 0)
+    client = FakeClient()
+    old_props = {name: {} for name in notion_upload.PROPERTIES if name != "출처"}
+    old_props["서브레딧"] = {}
+    client.data_sources.retrieve = FakeEndpoint(client.calls, "retrieve", {"properties": old_props})
+    client.data_sources.update = FakeEndpoint(client.calls, "update", {})
+    notion_upload.ensure_schema(client, "ds1")
+    update = [kw for name, kw in client.calls if name == "update"][0]
+    assert update["properties"] == {"서브레딧": {"name": "출처"}}
+
+
+def test_properties_with_unknown_score():
+    r = dict(fake_result(), score=None, community="r/gamedev")
+    props = notion_upload.build_properties(r, "2026-09-29")
+    assert props["점수"] == {"number": None}
+    assert props["출처"] == {"select": {"name": "r/gamedev"}}

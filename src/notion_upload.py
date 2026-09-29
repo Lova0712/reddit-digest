@@ -17,6 +17,7 @@ import time
 
 from notion_client import APIResponseError, Client
 
+from src.text_util import byline
 from src.translate import TAG_OPTIONS
 
 log = logging.getLogger(__name__)
@@ -25,15 +26,19 @@ MAX_TEXT = 2000       # rich_text 조각 하나의 최대 글자 수
 MAX_BLOCKS = 100      # 요청 한 번에 보낼 수 있는 최대 블록 수
 REQUEST_GAP = 0.4     # 요청 사이 대기 (Notion 권장: 초당 약 3회 이하)
 
-DATABASE_TITLE = "Reddit 게임개발 다이제스트"
+DATABASE_TITLE = "게임개발 커뮤니티 다이제스트"
 
 # 데이터베이스 칸(속성) 구성 - setup_notion.py 에서 이 모양으로 만듭니다.
+# "출처" 선택지는 처음 보는 이름이 오면 Notion 이 자동으로 추가합니다.
 PROPERTIES = {
     "제목": {"title": {}},
-    "서브레딧": {"select": {"options": [
-        {"name": "gamedev", "color": "orange"},
-        {"name": "indiedev", "color": "green"},
-        {"name": "Unity3D", "color": "blue"},
+    "출처": {"select": {"options": [
+        {"name": "r/gamedev", "color": "orange"},
+        {"name": "r/indiedev", "color": "orange"},
+        {"name": "r/Unity3D", "color": "orange"},
+        {"name": "dev.to #gamedev", "color": "purple"},
+        {"name": "dev.to #unity3d", "color": "purple"},
+        {"name": "GameDev SE", "color": "blue"},
     ]}},
     "원문 링크": {"url": {}},
     "점수": {"number": {"format": "number"}},
@@ -100,6 +105,31 @@ def get_data_source_id(client, database_id):
     if not sources:
         raise RuntimeError("Notion 데이터베이스에 데이터 소스가 없습니다.")
     return sources[0]["id"]
+
+
+# 예전 이름 → 새 이름 (Reddit 만 쓰던 시절의 "서브레딧" 칸을 "출처"로)
+RENAMED_PROPERTIES = {"서브레딧": "출처"}
+
+
+def ensure_schema(client, data_source_id):
+    """
+    데이터베이스 칸 구성이 지금 코드와 맞는지 확인하고, 다르면 고친다.
+    - 예전 이름의 칸은 새 이름으로 바꾸고 (기존 값 유지)
+    - 없는 칸은 추가한다
+    """
+    ds = call(client.data_sources.retrieve, data_source_id=data_source_id)
+    existing = set(ds.get("properties", {}))
+    changes = {}
+    for old, new in RENAMED_PROPERTIES.items():
+        if old in existing and new not in existing:
+            changes[old] = {"name": new}
+            existing.add(new)
+    for name, spec in PROPERTIES.items():
+        if name not in existing and name != "제목":
+            changes[name] = spec
+    if changes:
+        call(client.data_sources.update, data_source_id=data_source_id, properties=changes)
+        log.info("Notion 데이터베이스 칸 구성을 갱신했습니다: %s", ", ".join(changes))
 
 
 # ───────────── 글자·블록 만들기 ─────────────
@@ -171,8 +201,7 @@ def build_blocks(r):
     """페이지 본문: 원문 정보 → 요약 → 번역 → 댓글 요약."""
     info = (
         rich_text("원문: ", bold=True) + rich_text(r["permalink"], link=r["permalink"])
-        + rich_text(f"\n{r['original_title']}\n"
-                    f"r/{r['subreddit']} · u/{r['author']} · 작성일 {r['created_date']} · 추천 {r['score']}")
+        + rich_text(f"\n{r['original_title']}\n{byline(r)}")
     )
     blocks = [{"object": "block", "type": "callout",
                "callout": {"rich_text": info, "icon": {"type": "emoji", "emoji": "🔗"}, "color": "gray_background"}}]
@@ -195,9 +224,9 @@ def build_blocks(r):
 def build_properties(r, digest_date):
     return {
         "제목": {"title": rich_text(r["title_ko"])},
-        "서브레딧": {"select": {"name": r["subreddit"]}},
+        "출처": {"select": {"name": r["community"]}},
         "원문 링크": {"url": r["permalink"]},
-        "점수": {"number": r["score"]},
+        "점수": {"number": r.get("score")},  # Reddit RSS 는 추천 수가 없어 빈칸
         "유용도": {"number": r.get("usefulness")},
         "태그": {"multi_select": [{"name": t} for t in r["tags"]]},
         "날짜": {"date": {"start": digest_date}},  # 다이제스트로 수집한 날
